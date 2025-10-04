@@ -88,8 +88,8 @@ if [[ -n "$target_date" ]]; then
     echo "ERROR: Date must be in YYYY-MM-DD format. Got: '$target_date'" >&2
     exit 13
   fi
-  # Validate it's a real date using date command
-  if ! date -j -f "%Y-%m-%d" "$target_date" >/dev/null 2>&1; then
+  # Validate it's a real date using date command (cross-platform)
+  if ! date -d "$target_date" >/dev/null 2>&1 && ! date -j -f "%Y-%m-%d" "$target_date" >/dev/null 2>&1; then
     echo "ERROR: Invalid date: '$target_date'" >&2
     exit 14
   fi
@@ -112,6 +112,10 @@ fi
 for cmd in curl jq; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
     echo "ERROR: required command '$cmd' not found. Install it and try again." >&2
+    if [[ "$cmd" == "jq" ]]; then
+      echo "  On Ubuntu/Debian: sudo apt-get install jq" >&2
+      echo "  On macOS with Homebrew: brew install jq" >&2
+    fi
     exit 2
   fi
 done
@@ -155,7 +159,14 @@ if [[ "$random_puzzle" == true ]]; then
   case $era_choice in
     0)
       # Recent era (past 2 years)
-      era_start=$(date -j -v-2y +%Y-%m-%d)
+      # Cross-platform date calculation
+      if date -d "2 years ago" >/dev/null 2>&1; then
+        # GNU date (Linux)
+        era_start=$(date -d "2 years ago" +%Y-%m-%d)
+      else
+        # BSD date (macOS)
+        era_start=$(date -j -v-2y +%Y-%m-%d)
+      fi
       era_end=$(date +%Y-%m-%d)
       era_desc="recent (past 2 years)"
       ;;
