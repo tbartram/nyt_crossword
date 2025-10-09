@@ -21,7 +21,7 @@ IFS=' ' read -ra LPR_OPTS_ARRAY <<< "$LPR_OPTS"
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") [-c cookie_file] [-o OFFSET | -d DATE | -r] [-p printer] [-s] [-n] [-h]
+Usage: $(basename "$0") [-c cookie_file] [-o OFFSET | -d DATE | -r] [-p printer] [-s] [-n] [-l] [-L] [-i] [-S] [-h]
   -c COOKIE_FILE   Path to cookies.txt (Netscape format). Default: $COOKIES
   -o OFFSET        Which puzzle to fetch by index:
                      0  = most recent (default)
@@ -33,6 +33,10 @@ Usage: $(basename "$0") [-c cookie_file] [-o OFFSET | -d DATE | -r] [-p printer]
   -p PRINTER       lpr printer name. Required for printing (unless -s or -n)
   -s               Save PDF to local file instead of printing (prints filename)
   -n               Dry-run: show URL and curl command only, do not download/print
+  -l               Large print version
+  -L               Left-handed (southpaw) version
+  -i               Ink saver version (reduced opacity)
+  -S               Solution version (answers shown)
   -h               Show this help
 
 Configuration is loaded from config.sh in the same directory as this script.
@@ -53,9 +57,13 @@ target_date=""
 random_puzzle=false
 save_only=false
 dry_run=false
+large_print=false
+left_handed=false
+ink_saver=false
+solution=false
 
 # parse options
-while getopts ":c:o:d:rp:snh" opt; do
+while getopts ":c:o:d:rp:snlLiSh" opt; do
   case "$opt" in
     c) cookie_file="$OPTARG" ;;
     o) offset="$OPTARG" ;;
@@ -64,6 +72,10 @@ while getopts ":c:o:d:rp:snh" opt; do
     p) PRINTER="$OPTARG" ;;
     s) save_only=true ;;
     n) dry_run=true ;;
+    l) large_print=true ;;
+    L) left_handed=true ;;
+    i) ink_saver=true ;;
+    S) solution=true ;;
     h) usage ;;
     \?) echo "Unknown option: -$OPTARG" >&2; usage ;;
     :) echo "Missing argument for -$OPTARG" >&2; usage ;;
@@ -319,9 +331,47 @@ fi
 # build PDF url
 pdf_url="https://www.nytimes.com/svc/crosswords/v2/puzzle/${puzzid}.pdf"
 
+# add printing options as URL parameters
+url_params=""
+if [ "$large_print" = true ]; then
+  url_params="large_print=true"
+fi
+if [ "$left_handed" = true ]; then
+  if [ -n "$url_params" ]; then
+    url_params="${url_params}&southpaw=true"
+  else
+    url_params="southpaw=true"
+  fi
+fi
+if [ "$ink_saver" = true ]; then
+  if [ -n "$url_params" ]; then
+    url_params="${url_params}&block_opacity=30"
+  else
+    url_params="block_opacity=30"
+  fi
+fi
+
+# modify filename and URL for solution
+file_suffix=""
+if [ "$solution" = true ]; then
+  file_suffix=".ans"
+  pdf_url="https://www.nytimes.com/svc/crosswords/v2/puzzle/${puzzid}.ans.pdf"
+  # only ink saver applies to solution
+  if [ "$ink_saver" = true ]; then
+    url_params="block_opacity=30"
+  else
+    url_params=""
+  fi
+fi
+
+# append URL parameters if any
+if [ -n "$url_params" ]; then
+  pdf_url="${pdf_url}?${url_params}"
+fi
+
 # prepare temporary filename
 timestamp=$(date +%Y%m%dT%H%M%S)
-tmp_pdf="${TMPDIR%/}/nyt-puzzle-${puzzid}-${timestamp}.pdf"
+tmp_pdf="${TMPDIR%/}/nyt-puzzle-${puzzid}${file_suffix}-${timestamp}.pdf"
 
 echo "Puzzle id: $puzzid"
 echo "PDF URL: $pdf_url"
