@@ -169,40 +169,25 @@ if [[ "$random_puzzle" == true ]]; then
   # For random puzzle, we'll randomly select from different eras and then pick a random date within that era
   # This ensures true randomness across the entire era, not just the most recent 100 puzzles
   
-  # Randomly choose an era to pull from
-  era_choice=$((RANDOM % 4))
-  case $era_choice in
-    0)
-      # Recent era (past 2 years)
-      # Cross-platform date calculation for 2 years ago
-      current_year=$(date +%Y)
-      two_years_ago=$((current_year - 2))
-      era_start="${two_years_ago}-$(date +%m-%d)"
-      era_end=$(date +%Y-%m-%d)
-      era_desc="recent (past 2 years)"
-      ;;
-    1)
-      # Modern era (2000-2022)
-      era_start="2000-01-01"
-      era_end="2022-12-31"
-      era_desc="modern (2000-2022)"
-      ;;
-    2)
-      # Classic era (1970-1999)
-      era_start="1970-01-01"
-      era_end="1999-12-31"
-      era_desc="classic (1970-1999)"
-      ;;
-    3)
-      # Historical era (1942-1969) - includes Sunday-only period
-      era_start="1942-02-15"
-      era_end="1969-12-31"
-      era_desc="historical (1942-1969)"
-      ;;
-  esac
+  # Simplified random selection with just two weighted periods
+  # Historical era (1942-1969): ~100 puzzles (Sundays only) = 5% weight
+  # Modern era (1994-present): ~11,000+ puzzles = 95% weight
+  
+  weight_choice=$((RANDOM % 100))
+  if [[ $weight_choice -lt 95 ]]; then
+    # Modern era (1994-present) - 95% probability
+    era_start="1994-01-01"
+    era_end=$(date +%Y-%m-%d)
+    era_desc="modern (1994-present)"
+  else
+    # Historical era (1942-1969) - 5% probability  
+    era_start="1942-02-15"
+    era_end="1969-12-31"
+    era_desc="historical (1942-1969)"
+  fi
   
   # Generate a random date within the selected era
-  if [[ $era_choice -eq 3 ]]; then
+  if [[ "$era_desc" == "historical (1942-1969)" ]]; then
     # Historical era has very few puzzles, so use the full date range
     buffer_start="$era_start"
     buffer_end="$era_end"
