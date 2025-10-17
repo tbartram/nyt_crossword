@@ -212,6 +212,36 @@ The project includes comprehensive testing infrastructure:
 
 See [TEST_README.md](TEST_README.md) for detailed testing documentation.
 
+## 📱 Siri Shortcuts
+
+The repository includes iOS Shortcuts for convenient voice-activated access to your crossword collection. Each shortcut connects to your server via SSH and executes the crossword script remotely.
+
+### Available Shortcuts
+
+- **📋 Print Today's Crossword** - *"Hey Siri, print today's crossword"*
+- **📋 Print Yesterday's Crossword** - *"Hey Siri, print yesterday's crossword"*  
+- **📋 Print Tomorrow's Crossword** - *"Hey Siri, print tomorrow's crossword"*
+- **🎲 Print Random Crossword** - *"Hey Siri, print a random crossword"*
+- **📅 Print Specific Crossword** - *"Hey Siri, print a specific crossword"*
+
+### Quick Setup
+1. **Transfer shortcuts** to your iOS device from the `siri_shortcuts/` directory
+2. **Import each shortcut** - tap "Add Shortcut" when prompted
+3. **Configure during import**:
+   - **Remote Host**: Your server's IP or hostname
+   - **Username**: SSH username for the server  
+   - **Default Command**: Base command (e.g., `cd ~/nyt_crossword && ./get_crossword.sh`)
+4. **Test manually** before using voice commands
+5. **Enable Siri phrases** for hands-free operation
+
+### Smart Features
+- **⏰ Smart timing** - Tomorrow's crossword only works after release times (10PM Sun-Fri, 6PM Sat)
+- **🔒 Secure SSH** - Encrypted connection to your server
+- **⚙️ Flexible commands** - Customize with any script options (-l, -L, -i, -s, etc.)
+- **🎙️ Voice activation** - Complete hands-free operation via Siri
+
+**📚 Full documentation**: See [siri_shortcuts/README.md](siri_shortcuts/README.md) for complete setup instructions, troubleshooting, and customization options.
+
 ## 🏗️ Architecture
 
 ### Design Principles
