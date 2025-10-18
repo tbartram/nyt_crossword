@@ -1,27 +1,27 @@
 # 📱 Siri Shortcuts for NYT Crossword
 
-This directory contains iOS Shortcuts that provide convenient voice-activated access to the NYT crossword script running on a remote server. Each shortcut uses SSH to execute the crossword script remotely and can be triggered via Siri voice commands.
+This directory contains Siri Shortcuts that provide convenient voice-activated access to the NYT crossword script running on a remote server. Each shortcut uses SSH to execute the crossword script remotely and can be triggered via Siri voice commands.
 
 ## 🎯 Available Shortcuts
 
 ### 📋 **Print Today's Crossword** (`print_today_crossword.shortcut`)
 **Voice Command**: *"Hey Siri, print today's crossword"*  
 **Function**: Downloads and prints the current day's crossword puzzle  
-**Script Command**: `./get_crossword.sh` (uses default recent mode)
+**Script Command**: `./get_crossword.sh -d <today's date>`
 
 ---
 
 ### 📋 **Print Yesterday's Crossword** (`print_yesterday_crossword.shortcut`)  
 **Voice Command**: *"Hey Siri, print yesterday's crossword"*  
 **Function**: Downloads and prints yesterday's crossword puzzle  
-**Script Command**: `./get_crossword.sh -d <yesterday's date>` (offset by 1 day)
+**Script Command**: `./get_crossword.sh -d <yesterday's date>`
 
 ---
 
 ### 📋 **Print Tomorrow's Crossword** (`print_tomorrow_crossword.shortcut`)
 **Voice Command**: *"Hey Siri, print tomorrow's crossword"*  
 **Function**: Downloads and prints tomorrow's crossword puzzle  
-**Script Command**: `./get_crossword.sh -d <tomorrow's date>` (if available)  
+**Script Command**: `./get_crossword.sh -d <tomorrow's date>`
 **Smart Timing**: Only works after puzzle release times:
 - **Sunday-Friday**: After 10:00 PM  
 - **Saturday**: After 6:00 PM
@@ -38,34 +38,34 @@ This directory contains iOS Shortcuts that provide convenient voice-activated ac
 ### 📅 **Print Specific Crossword** (`print_specific_crossword.shortcut`)
 **Voice Command**: *"Hey Siri, print a specific crossword"*  
 **Function**: Prompts for a date, then downloads that puzzle  
-**Script Command**: `./get_crossword.sh -d YYYY-MM-DD`  
+**Script Command**: `./get_crossword.sh -d <specified date>`  
 **Interactive**: Asks user to input date during execution
 
 ## ⚙️ Setup Requirements
 
 ### Prerequisites
-- **iOS Device** with Shortcuts app (iOS 13+)
+- **Apple Device** with Shortcuts app
 - **Remote Server** with the crossword script installed and configured
 - **SSH Access** to the remote server from your iOS device
 - **Printer** configured on the remote server
 - **Valid NYT Cookies** stored on the remote server
 
 ### Network Requirements
-- iOS device and server must have network connectivity
-- SSH port (22) accessible from iOS device to server
+- Shortcuts device and server must have network connectivity
+- SSH port (22) accessible from Shortcuts device to server
 - Consider VPN if accessing server over internet
 
 ## 🛠️ Installation & Configuration
 
 ### Step 1: Download Shortcuts
-1. Transfer `.shortcut` files to your iOS device via:
+1. Transfer `.shortcut` files to your device via:
    - AirDrop from Mac
    - Email attachment
    - iCloud Drive/Files app
    - Direct download from GitHub
 
 ### Step 2: Import and Configure
-1. **Open each shortcut file** on your iOS device
+1. **Open each shortcut file** on your device
 2. **Tap "Add Shortcut"** when prompted
 3. **Configure import-time prompts** for each shortcut:
 
