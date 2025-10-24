@@ -783,7 +783,7 @@ fi
 
 if $save_only; then
   # Get puzzle date for filename formatting
-  local puzzle_date=""
+  puzzle_date=""
   if [[ "$random_puzzle" == true ]]; then
     puzzle_date="$(parse_json "$list_json" --argjson idx "$random_index" '.results[$idx].print_date // empty')"
   elif [[ -n "$target_date" ]]; then
