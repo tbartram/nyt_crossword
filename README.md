@@ -12,6 +12,7 @@ A robust, feature-rich command-line tool for downloading and printing New York T
 - **Recent puzzles** - Get today's or recent puzzles by offset
 - **Specific dates** - Download any puzzle from the NYT archive 
 - **Random selection** - Weighted random from historical (1942-1969) or modern (1994-present) eras
+- **Day-of-week selection** - Random puzzle from specific weekday (Monday=easy, Saturday=hard)
 - **Smart fallback** - Automatic retry with expanded date ranges
 
 ### 🎨 **Format Options**
@@ -109,6 +110,7 @@ SELECTION:
   -o OFFSET        Puzzle by index (0=today, 1=yesterday, etc.)
   -d DATE          Specific date (YYYY-MM-DD format)
   -r               Random puzzle from archive
+  -w DAY           Random puzzle from specific day of week (Monday-Sunday/1-7)
 
 OUTPUT:
   -p PRINTER       Printer name for direct printing
@@ -136,6 +138,15 @@ OTHER:
 
 # Random historical puzzle with multiple formats
 ./get_crossword.sh -r -l -L -i
+
+# Easy Monday puzzle for beginners
+./get_crossword.sh -w Monday -s
+
+# Challenge yourself with a Saturday puzzle
+./get_crossword.sh -w Saturday -p "MyPrinter"
+
+# Random Friday puzzle in large print
+./get_crossword.sh -w Friday -l
 
 # Use custom cookie file and save with verbose output
 VERBOSITY=2 ./get_crossword.sh -c ~/my_cookies.txt -s

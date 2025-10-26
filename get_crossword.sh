@@ -198,7 +198,7 @@ IFS=' ' read -ra LPR_OPTS_ARRAY <<< "$LPR_OPTS"
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") [-c cookie_file] [-o OFFSET | -d DATE | -r] [-p printer] [-s] [-n] [-l] [-L] [-i] [-S] [-h]
+Usage: $(basename "$0") [-c cookie_file] [-o OFFSET | -d DATE | -r | -w DAY] [-p printer] [-s] [-n] [-l] [-L] [-i] [-S] [-h]
   -c COOKIE_FILE   Path to cookies.txt (Netscape format). Default: $COOKIES
   -o OFFSET        Which puzzle to fetch by index:
                      0  = most recent (default)
@@ -207,6 +207,9 @@ Usage: $(basename "$0") [-c cookie_file] [-o OFFSET | -d DATE | -r] [-p printer]
                      -1 = same as 1 (accepts negative for convenience)
   -d DATE          Fetch puzzle for specific date (YYYY-MM-DD format)
   -r               Fetch a random puzzle from across different eras (${HISTORICAL_ERA_START%-*}-present)
+  -w DAY           Fetch a random puzzle from a specific day of the week
+                     (Monday/mon/1, Tuesday/tue/2, Wednesday/wed/3, Thursday/thu/4,
+                      Friday/fri/5, Saturday/sat/6, Sunday/sun/7/0)
   -p PRINTER       lpr printer name. Required for printing (unless -s or -n)
   -s               Save PDF to local file instead of printing (prints filename)
   -n               Dry-run: show URL and curl command only, do not download/print
@@ -222,6 +225,9 @@ Examples:
   $(basename "$0") -o 1                 # print second most recent
   $(basename "$0") -d 2025-10-01        # print puzzle for October 1, 2025
   $(basename "$0") -r                   # print a random puzzle from entire archive
+  $(basename "$0") -w Monday            # print a random Monday puzzle (easiest)
+  $(basename "$0") -w Saturday          # print a random Saturday puzzle (hardest)
+  $(basename "$0") -w Friday -l         # print a random Friday puzzle in large print
   $(basename "$0") -c /path/cookies.txt -s
 EOF
   exit 1
@@ -329,6 +335,83 @@ generate_random_date_in_era() {
   fi
   
   echo "$buffer_start" "$buffer_end" "$random_date"
+}
+
+generate_random_date_for_day_of_week() {
+  local day_of_week="$1"
+  local era_start="$2"
+  local era_end="$3"
+  
+  # Convert day names to numbers (0=Sunday, 1=Monday, etc.)
+  local target_dow
+  case "$day_of_week" in
+    Sunday) target_dow=0 ;;
+    Monday) target_dow=1 ;;
+    Tuesday) target_dow=2 ;;
+    Wednesday) target_dow=3 ;;
+    Thursday) target_dow=4 ;;
+    Friday) target_dow=5 ;;
+    Saturday) target_dow=6 ;;
+  esac
+  
+  # Generate random dates until we find one matching the target day of week
+  local attempts=0
+  local max_attempts=100
+  while (( attempts < max_attempts )); do
+    # Generate a random date in the era
+    read -r _ _ random_date <<< "$(generate_random_date_in_era "$era_start" "$era_end")"
+    
+    # Check what day of week this date is
+    local date_dow
+    if command -v date >/dev/null 2>&1; then
+      if date -d "$random_date" >/dev/null 2>&1; then
+        # GNU date (Linux)
+        date_dow=$(date -d "$random_date" +%w)
+      elif date -j -f "%Y-%m-%d" "$random_date" >/dev/null 2>&1; then
+        # BSD date (macOS)
+        date_dow=$(date -j -f "%Y-%m-%d" "$random_date" +%w)
+      else
+        log_message 0 "Unable to determine day of week for $random_date"
+        attempts=$((attempts + 1))
+        continue
+      fi
+    else
+      log_message 0 "date command not available for day-of-week calculation"
+      break
+    fi
+    
+    # If we found a matching day, return it
+    if [[ "$date_dow" == "$target_dow" ]]; then
+      # Create buffer around the date for better puzzle availability
+      local buffer_start buffer_end
+      if command -v date >/dev/null 2>&1; then
+        if date -d "$random_date" >/dev/null 2>&1; then
+          # GNU date (Linux)
+          buffer_start=$(date -d "$random_date - $RANDOM_DATE_BUFFER_DAYS days" +%Y-%m-%d 2>/dev/null || echo "$era_start")
+          buffer_end=$(date -d "$random_date + $RANDOM_DATE_BUFFER_DAYS days" +%Y-%m-%d 2>/dev/null || echo "$era_end")
+        elif date -j -f "%Y-%m-%d" "$random_date" >/dev/null 2>&1; then
+          # BSD date (macOS)  
+          buffer_start=$(date -j -v-${RANDOM_DATE_BUFFER_DAYS}d -f "%Y-%m-%d" "$random_date" +%Y-%m-%d 2>/dev/null || echo "$era_start")
+          buffer_end=$(date -j -v+${RANDOM_DATE_BUFFER_DAYS}d -f "%Y-%m-%d" "$random_date" +%Y-%m-%d 2>/dev/null || echo "$era_end")
+        else
+          buffer_start="$era_start"
+          buffer_end="$era_end"
+        fi
+      else
+        buffer_start="$era_start"
+        buffer_end="$era_end"
+      fi
+      
+      echo "$buffer_start" "$buffer_end" "$random_date"
+      return 0
+    fi
+    
+    attempts=$((attempts + 1))
+  done
+  
+  # If we couldn't find a matching date after max attempts, fall back to any date
+  log_message 1 "Could not find a $day_of_week puzzle after $max_attempts attempts, using any date from era"
+  generate_random_date_in_era "$era_start" "$era_end"
 }
 
 build_puzzle_list_url() {
@@ -554,6 +637,7 @@ cookie_file="$COOKIES"
 offset=0
 target_date=""
 random_puzzle=false
+random_day_of_week=""
 save_only=false
 dry_run=false
 large_print=false
@@ -568,12 +652,13 @@ if [[ "$DEFAULT_INK_SAVER" == "true" ]]; then ink_saver=true; fi
 if [[ "$DEFAULT_SOLUTION" == "true" ]]; then solution=true; fi
 
 # parse options
-while getopts ":c:o:d:rp:snlLiSh" opt; do
+while getopts ":c:o:d:rw:p:snlLiSh" opt; do
   case "$opt" in
     c) cookie_file="$OPTARG" ;;
     o) offset="$OPTARG" ;;
     d) target_date="$OPTARG" ;;
     r) random_puzzle=true ;;
+    w) random_day_of_week="$OPTARG" ;;
     p) PRINTER="$OPTARG" ;;
     s) save_only=true ;;
     n) dry_run=true ;;
@@ -593,9 +678,10 @@ selection_count=0
 [[ -n "$target_date" ]] && ((selection_count++))
 [[ "$offset" != "0" ]] && ((selection_count++))
 [[ "$random_puzzle" == true ]] && ((selection_count++))
+[[ -n "$random_day_of_week" ]] && ((selection_count++))
 
 if (( selection_count > 1 )); then
-  error_exit "Cannot use multiple selection options (-o, -d, -r) together." 12
+  error_exit "Cannot use multiple selection options (-o, -d, -r, -w) together." 12
 fi
 
 # Apply default mode if no explicit selection was specified
@@ -617,6 +703,22 @@ if [[ -n "$target_date" ]]; then
   if ! validate_date "$target_date"; then
     exit 13
   fi
+fi
+
+# Validate day of week if provided
+if [[ -n "$random_day_of_week" ]]; then
+  # Convert to lowercase for case-insensitive matching
+  random_day_of_week_lower=$(echo "$random_day_of_week" | tr '[:upper:]' '[:lower:]')
+  case "$random_day_of_week_lower" in
+    monday|mon|1) random_day_of_week="Monday" ;;
+    tuesday|tue|2) random_day_of_week="Tuesday" ;;
+    wednesday|wed|3) random_day_of_week="Wednesday" ;;
+    thursday|thu|4) random_day_of_week="Thursday" ;;
+    friday|fri|5) random_day_of_week="Friday" ;;
+    saturday|sat|6) random_day_of_week="Saturday" ;;
+    sunday|sun|7|0) random_day_of_week="Sunday" ;;
+    *) error_exit "Invalid day of week: '$random_day_of_week'. Use Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, or Sunday (or abbreviations/numbers)." 13 ;;
+  esac
 fi
 
 # Expand ~ in cookie path if present
@@ -672,6 +774,13 @@ if [[ "$random_puzzle" == true ]]; then
   
   LIST_URL="$(build_puzzle_list_url "$buffer_start" "$buffer_end")"
   log_message 1 "Fetching puzzle list for random selection from $era_desc era (around $random_date)..."
+elif [[ -n "$random_day_of_week" ]]; then
+  # Select random era and generate date for specific day of week
+  read -r era_start era_end era_desc <<< "$(select_random_era)"
+  read -r buffer_start buffer_end random_date <<< "$(generate_random_date_for_day_of_week "$random_day_of_week" "$era_start" "$era_end")"
+  
+  LIST_URL="$(build_puzzle_list_url "$buffer_start" "$buffer_end")"
+  log_message 1 "Fetching puzzle list for random $random_day_of_week puzzle from $era_desc era (around $random_date)..."
 else
   # For offset or date-based selection
   if [[ -n "$target_date" ]]; then
@@ -717,6 +826,51 @@ if [[ "$random_puzzle" == true ]]; then
   puzzle_date="$(parse_json "$list_json" --argjson idx "$random_index" '.results[$idx].print_date // empty')"
   
   log_message 1 "Selected random puzzle from $puzzle_date (puzzle $((random_index + 1)) of $puzzle_count available)"
+  
+elif [[ -n "$random_day_of_week" ]]; then
+  # Handle day-of-week selection - filter puzzles to match the desired day
+  results_check="$(parse_json "$list_json" '.results // "null"')"
+  if [[ "$results_check" == "null" ]]; then
+    echo "No puzzles found around $random_date, falling back to full era range..." >&2
+    # Fall back to full era range
+    LIST_URL="$(build_puzzle_list_url "$era_start" "$era_end")"
+    list_json="$(fetch_puzzle_list "$LIST_URL" "$cookie_file")"
+    results_check="$(parse_json "$list_json" '.results // "null"')"
+    if [[ "$results_check" == "null" ]]; then
+      error_exit "No puzzles found in the $era_desc era at all. This is unexpected - please try again." 6
+    fi
+  fi
+  
+  # Convert day name to number for jq filtering (0=Sunday, 1=Monday, etc.)
+  target_dow=""
+  case "$random_day_of_week" in
+    Sunday) target_dow=0 ;;
+    Monday) target_dow=1 ;;
+    Tuesday) target_dow=2 ;;
+    Wednesday) target_dow=3 ;;
+    Thursday) target_dow=4 ;;
+    Friday) target_dow=5 ;;
+    Saturday) target_dow=6 ;;
+  esac
+  
+  # Filter puzzles to only those matching the target day of week
+  # Note: This uses jq's strftime to check day of week
+  filtered_puzzles="$(parse_json "$list_json" --argjson dow "$target_dow" '
+    .results | map(select(.print_date | strptime("%Y-%m-%d") | strftime("%w") | tonumber == $dow))
+  ')"
+  
+  filtered_count="$(parse_json "$filtered_puzzles" 'length')"
+  
+  if [[ "$filtered_count" == "0" ]]; then
+    error_exit "No $random_day_of_week puzzles found in the $era_desc era around $random_date. Try a different era or date range." 6
+  fi
+  
+  # Generate random index from filtered results
+  random_index=$((RANDOM % filtered_count))
+  puzzid="$(parse_json "$filtered_puzzles" --argjson idx "$random_index" '.[$idx].puzzle_id // empty')"
+  puzzle_date="$(parse_json "$filtered_puzzles" --argjson idx "$random_index" '.[$idx].print_date // empty')"
+  
+  log_message 1 "Selected random $random_day_of_week puzzle from $puzzle_date (puzzle $((random_index + 1)) of $filtered_count $random_day_of_week puzzles available)"
   
 elif [[ -n "$target_date" ]]; then
   # Find puzzle by date
@@ -786,6 +940,8 @@ if $save_only; then
   puzzle_date=""
   if [[ "$random_puzzle" == true ]]; then
     puzzle_date="$(parse_json "$list_json" --argjson idx "$random_index" '.results[$idx].print_date // empty')"
+  elif [[ -n "$random_day_of_week" ]]; then
+    puzzle_date="$(parse_json "$filtered_puzzles" --argjson idx "$random_index" '.[$idx].print_date // empty')"
   elif [[ -n "$target_date" ]]; then
     puzzle_date="$target_date"
   else
