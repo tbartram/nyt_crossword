@@ -233,6 +233,7 @@ The repository includes iOS Shortcuts for convenient voice-activated access to y
 - **📋 Print Yesterday's Crossword** - *"Hey Siri, print yesterday's crossword"*  
 - **📋 Print Tomorrow's Crossword** - *"Hey Siri, print tomorrow's crossword"*
 - **🎲 Print Random Crossword** - *"Hey Siri, print a random crossword"*
+- **📅 Print Random Weekday Crossword** - *"Hey Siri, print a random weekday crossword"*
 - **📅 Print Specific Crossword** - *"Hey Siri, print a specific crossword"*
 
 ### Quick Setup

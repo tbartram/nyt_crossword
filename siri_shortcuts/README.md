@@ -35,6 +35,21 @@ This directory contains Siri Shortcuts that provide convenient voice-activated a
 
 ---
 
+### 📅 **Print Random Weekday Crossword** (`print_random_weekday_crossword.shortcut`)
+**Voice Command**: *"Hey Siri, print random weekday crossword"*  
+**Function**: Prompts for a day of the week, then downloads a random puzzle from that day  
+**Script Command**: `./get_crossword.sh -w <selected day>`  
+**Interactive**: Asks user to choose day during execution (Monday=easy, Saturday=hard)  
+**Difficulty Guide**:
+- **Monday**: Easiest puzzles, perfect for beginners
+- **Tuesday-Wednesday**: Moderate difficulty
+- **Thursday**: Trickier with wordplay and themes
+- **Friday**: Challenging but straightforward
+- **Saturday**: Hardest, themeless puzzles
+- **Sunday**: Large themed puzzles
+
+---
+
 ### 📅 **Print Specific Crossword** (`print_specific_crossword.shortcut`)
 **Voice Command**: *"Hey Siri, print a specific crossword"*  
 **Function**: Prompts for a date, then downloads that puzzle  
@@ -123,6 +138,7 @@ Once configured, you can use these voice commands with Siri:
 "Hey Siri, print yesterday's crossword"  
 "Hey Siri, print tomorrow's crossword"
 "Hey Siri, print a random crossword"
+"Hey Siri, print a random weekday crossword"
 "Hey Siri, print a specific crossword"
 ```
 
@@ -181,11 +197,17 @@ To create additional shortcuts:
 
 ### Example Custom Shortcuts
 ```bash
-# Weekend puzzles only (Friday-Sunday)
-./get_crossword.sh -r  # Could be enhanced with date filtering
+# Specific weekday shortcuts (fixed days)
+./get_crossword.sh -w Monday      # "Hey Siri, easy Monday puzzle"
+./get_crossword.sh -w Saturday    # "Hey Siri, hard Saturday puzzle"
 
-# Large print random puzzle
-./get_crossword.sh -r -l
+# Weekend puzzles only (Friday-Sunday)  
+./get_crossword.sh -w Friday
+./get_crossword.sh -w Saturday
+./get_crossword.sh -w Sunday
+
+# Large print weekday puzzles
+./get_crossword.sh -w Tuesday -l
 
 # Save puzzle to specific directory
 SAVE_DIR=~/weekend-puzzles ./get_crossword.sh -s
