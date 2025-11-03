@@ -87,6 +87,16 @@ else
     echo "❌ FAIL - Date selection broken"
 fi
 
+# Test 9: Day-of-week selection
+echo ""
+echo "9️⃣  Testing day-of-week selection..."
+output=$(./get_crossword.sh -w Monday -n 2>&1 || true)
+if [[ "$output" == *"random Monday puzzle"* && "$output" == *"era"* ]]; then
+    echo "✅ PASS - Day-of-week selection works"
+else
+    echo "❌ FAIL - Day-of-week selection broken"
+fi
+
 echo ""
 echo "🎯 Quick test suite completed!"
 echo "Run './test_suite.sh --verbose' for comprehensive testing."

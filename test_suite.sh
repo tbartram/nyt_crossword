@@ -223,6 +223,60 @@ test_random_option() {
     assert_contains "$output" "era"
 }
 
+test_weekday_monday() {
+    local output
+    output=$(run_crossword -w Monday)
+    
+    assert_contains "$output" "random Monday puzzle" &&
+    assert_contains "$output" "era"
+}
+
+test_weekday_abbreviation() {
+    local output
+    output=$(run_crossword -w fri)
+    
+    assert_contains "$output" "random Friday puzzle" &&
+    assert_contains "$output" "era"
+}
+
+test_weekday_number() {
+    local output
+    output=$(run_crossword -w 6)
+    
+    assert_contains "$output" "random Saturday puzzle" &&
+    assert_contains "$output" "era"
+}
+
+test_weekday_sunday_zero() {
+    local output
+    output=$(run_crossword -w 0)
+    
+    assert_contains "$output" "random Sunday puzzle" &&
+    assert_contains "$output" "era"
+}
+
+test_weekday_case_insensitive() {
+    local output
+    output=$(run_crossword -w TUESDAY)
+    
+    assert_contains "$output" "random Tuesday puzzle" &&
+    assert_contains "$output" "era"
+}
+
+test_weekday_invalid_day() {
+    local output
+    output=$(run_crossword -w InvalidDay)
+    
+    assert_contains "$output" "ERROR: Invalid day of week"
+}
+
+test_weekday_invalid_number() {
+    local output
+    output=$(run_crossword -w 8)
+    
+    assert_contains "$output" "ERROR: Invalid day of week"
+}
+
 # =============================================================================
 # CONFIGURATION TESTS
 # =============================================================================
@@ -535,6 +589,16 @@ main() {
     run_test "Offset option parsing" test_offset_option
     run_test "Date option parsing" test_date_option
     run_test "Random option functionality" test_random_option
+    
+    echo ""
+    echo "=== Weekday Selection Tests ==="
+    run_test "Weekday selection - Monday" test_weekday_monday
+    run_test "Weekday abbreviation - fri" test_weekday_abbreviation
+    run_test "Weekday number - 6 (Saturday)" test_weekday_number
+    run_test "Weekday Sunday as 0" test_weekday_sunday_zero
+    run_test "Weekday case insensitive" test_weekday_case_insensitive
+    run_test "Invalid weekday name" test_weekday_invalid_day
+    run_test "Invalid weekday number" test_weekday_invalid_number
     
     echo ""
     echo "=== Configuration Tests ==="

@@ -186,8 +186,6 @@ load_and_validate_config
 readonly HISTORICAL_ERA_START="1942-02-15"
 readonly HISTORICAL_ERA_END="1969-12-31"
 readonly MODERN_ERA_START="1994-01-01"
-readonly LEAP_YEAR_FEB_DAYS=29
-readonly REGULAR_FEB_DAYS=28
 
 # Configuration-derived constants (set after config loading)
 readonly HISTORICAL_WEIGHT="$RANDOM_HISTORICAL_WEIGHT"
@@ -197,6 +195,7 @@ readonly MODERN_WEIGHT="$RANDOM_MODERN_WEIGHT"
 IFS=' ' read -ra LPR_OPTS_ARRAY <<< "$LPR_OPTS"
 
 usage() {
+  local exit_code="${1:-1}"
   cat <<EOF
 Usage: $(basename "$0") [-c cookie_file] [-o OFFSET | -d DATE | -r | -w DAY] [-p printer] [-s] [-n] [-l] [-L] [-i] [-S] [-h]
   -c COOKIE_FILE   Path to cookies.txt (Netscape format). Default: $COOKIES
@@ -230,7 +229,7 @@ Examples:
   $(basename "$0") -w Friday -l         # print a random Friday puzzle in large print
   $(basename "$0") -c /path/cookies.txt -s
 EOF
-  exit 1
+  exit "$exit_code"
 }
 
 # Functions
@@ -261,6 +260,33 @@ expand_tilde_path() {
   else
     echo "$path"
   fi
+}
+
+create_date_buffer() {
+  local target_date="$1"
+  local era_start="$2" 
+  local era_end="$3"
+  
+  local buffer_start buffer_end
+  if command -v date >/dev/null 2>&1; then
+    if date -d "$target_date" >/dev/null 2>&1; then
+      # GNU date (Linux)
+      buffer_start=$(date -d "$target_date - $RANDOM_DATE_BUFFER_DAYS days" +%Y-%m-%d 2>/dev/null || echo "$era_start")
+      buffer_end=$(date -d "$target_date + $RANDOM_DATE_BUFFER_DAYS days" +%Y-%m-%d 2>/dev/null || echo "$era_end")
+    elif date -j -f "%Y-%m-%d" "$target_date" >/dev/null 2>&1; then
+      # BSD date (macOS)  
+      buffer_start=$(date -j -v-${RANDOM_DATE_BUFFER_DAYS}d -f "%Y-%m-%d" "$target_date" +%Y-%m-%d 2>/dev/null || echo "$era_start")
+      buffer_end=$(date -j -v+${RANDOM_DATE_BUFFER_DAYS}d -f "%Y-%m-%d" "$target_date" +%Y-%m-%d 2>/dev/null || echo "$era_end")
+    else
+      buffer_start="$era_start"
+      buffer_end="$era_end"
+    fi
+  else
+    buffer_start="$era_start"
+    buffer_end="$era_end"
+  fi
+  
+  echo "$buffer_start" "$buffer_end"
 }
 
 select_random_era() {
@@ -302,9 +328,9 @@ generate_random_date_in_era() {
     2)
       # February - check for leap year
       if (( (random_year % 4 == 0 && random_year % 100 != 0) || random_year % 400 == 0 )); then
-        days_in_month=$LEAP_YEAR_FEB_DAYS  # Leap year
+        days_in_month=29  # Leap year
       else
-        days_in_month=$REGULAR_FEB_DAYS    # Regular year
+        days_in_month=28  # Regular year
       fi
       ;;
   esac
@@ -315,24 +341,7 @@ generate_random_date_in_era() {
   local random_date=$(printf "%04d-%02d-%02d" $random_year $random_month $random_day)
   
   # Create a buffer around the random date (configurable days to get more puzzles in API call)
-  local buffer_start buffer_end
-  if command -v date >/dev/null 2>&1; then
-    if date -d "$random_date" >/dev/null 2>&1; then
-      # GNU date (Linux)
-      buffer_start=$(date -d "$random_date - $RANDOM_DATE_BUFFER_DAYS days" +%Y-%m-%d 2>/dev/null || echo "$era_start")
-      buffer_end=$(date -d "$random_date + $RANDOM_DATE_BUFFER_DAYS days" +%Y-%m-%d 2>/dev/null || echo "$era_end")
-    elif date -j -f "%Y-%m-%d" "$random_date" >/dev/null 2>&1; then
-      # BSD date (macOS)  
-      buffer_start=$(date -j -v-${RANDOM_DATE_BUFFER_DAYS}d -f "%Y-%m-%d" "$random_date" +%Y-%m-%d 2>/dev/null || echo "$era_start")
-      buffer_end=$(date -j -v+${RANDOM_DATE_BUFFER_DAYS}d -f "%Y-%m-%d" "$random_date" +%Y-%m-%d 2>/dev/null || echo "$era_end")
-    else
-      buffer_start="$era_start"
-      buffer_end="$era_end"
-    fi
-  else
-    buffer_start="$era_start"
-    buffer_end="$era_end"
-  fi
+  read -r buffer_start buffer_end <<< "$(create_date_buffer "$random_date" "$era_start" "$era_end")"
   
   echo "$buffer_start" "$buffer_end" "$random_date"
 }
@@ -383,24 +392,7 @@ generate_random_date_for_day_of_week() {
     # If we found a matching day, return it
     if [[ "$date_dow" == "$target_dow" ]]; then
       # Create buffer around the date for better puzzle availability
-      local buffer_start buffer_end
-      if command -v date >/dev/null 2>&1; then
-        if date -d "$random_date" >/dev/null 2>&1; then
-          # GNU date (Linux)
-          buffer_start=$(date -d "$random_date - $RANDOM_DATE_BUFFER_DAYS days" +%Y-%m-%d 2>/dev/null || echo "$era_start")
-          buffer_end=$(date -d "$random_date + $RANDOM_DATE_BUFFER_DAYS days" +%Y-%m-%d 2>/dev/null || echo "$era_end")
-        elif date -j -f "%Y-%m-%d" "$random_date" >/dev/null 2>&1; then
-          # BSD date (macOS)  
-          buffer_start=$(date -j -v-${RANDOM_DATE_BUFFER_DAYS}d -f "%Y-%m-%d" "$random_date" +%Y-%m-%d 2>/dev/null || echo "$era_start")
-          buffer_end=$(date -j -v+${RANDOM_DATE_BUFFER_DAYS}d -f "%Y-%m-%d" "$random_date" +%Y-%m-%d 2>/dev/null || echo "$era_end")
-        else
-          buffer_start="$era_start"
-          buffer_end="$era_end"
-        fi
-      else
-        buffer_start="$era_start"
-        buffer_end="$era_end"
-      fi
+      read -r buffer_start buffer_end <<< "$(create_date_buffer "$random_date" "$era_start" "$era_end")"
       
       echo "$buffer_start" "$buffer_end" "$random_date"
       return 0
@@ -666,9 +658,9 @@ while getopts ":c:o:d:rw:p:snlLiSh" opt; do
     L) left_handed=true ;;
     i) ink_saver=true ;;
     S) solution=true ;;
-    h) usage ;;
-    \?) echo "Unknown option: -$OPTARG" >&2; usage ;;
-    :) echo "Missing argument for -$OPTARG" >&2; usage ;;
+    h) usage 0 ;;
+    \?) echo "Unknown option: -$OPTARG" >&2; usage 1 ;;
+    :) echo "Missing argument for -$OPTARG" >&2; usage 1 ;;
   esac
 done
 shift $((OPTIND -1))
